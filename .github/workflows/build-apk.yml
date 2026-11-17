@@ -1,0 +1,54 @@
+name: Build Hidden Moments APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "HiddenMoments_PlayStore_Android_Studio_Project.zip"
+      - ".github/workflows/build-apk.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify project archive
+        run: |
+          test -f HiddenMoments_PlayStore_Android_Studio_Project.zip || {
+            echo "Upload HiddenMoments_PlayStore_Android_Studio_Project.zip to the repository root first."
+            exit 1
+          }
+
+      - name: Extract Android project
+        run: |
+          mkdir -p project
+          unzip -q HiddenMoments_PlayStore_Android_Studio_Project.zip -d project
+          test -d project/android-app || {
+            echo "Expected project/android-app folder was not found."
+            find project -maxdepth 3 -type d
+            exit 1
+          }
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+
+      - name: Build debug APK
+        working-directory: project/android-app
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: hidden-moments-debug-apk
+          path: project/android-app/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
